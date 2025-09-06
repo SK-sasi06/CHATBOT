@@ -1,18 +1,23 @@
 from flask import Flask, request, jsonify
 import os
 import google.generativeai as genai
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # allow frontend (Netlify) to connect
 
-# Load API key
+# Configure Gemini
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+@app.route("/", methods=["GET"])
+def home():
+    return "✅ Gemini Chatbot Backend is running!"
 
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.json
     user_message = data.get("message", "")
     
-    # Example Gemini response
     model = genai.GenerativeModel("gemini-pro")
     response = model.generate_content(user_message)
     
