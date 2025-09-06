@@ -1,61 +1,39 @@
-// script.js — frontend logic
-const messagesEl = document.getElementById('messages');
-const form = document.getElementById('chat-form');
-const input = document.getElementById('input');
+// script.js — Chatbot frontend logic
 
-// Conversation array sent to server; keep roles: 'user' or 'model'
-let conversation = [];
+const messagesEl = document.getElementById("messages");
+const form = document.getElementById("chat-form");
+const input = document.getElementById("input");
 
+// Add message to chat window
 function addMessage(role, text) {
-    const el = document.createElement('div');
-    el.className = `message ${role === 'user' ? 'user' : 'bot'}`;
-    el.textContent = text;
+    const el = document.createElement("div");
+    el.className = role === "user" ? "message user" : "message bot";
+    el.innerText = text;
     messagesEl.appendChild(el);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+    messagesEl.scrollTop = messagesEl.scrollHeight; // auto-scroll
 }
 
-form.addEventListener('submit', async (e) => {
+// Handle form submit
+form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const text = input.value.trim();
-    if (!text) return;
+    const userMessage = input.value.trim();
+    if (!userMessage) return;
 
-    // show user message
-    addMessage('user', text);
-    conversation.push({ role: 'user', text });
-    input.value = '';
+    // Show user message
+    addMessage("user", userMessage);
+    input.value = "";
 
-    // add a temporary 'typing' placeholder
-    const loadingEl = document.createElement('div');
-    loadingEl.className = 'message bot';
-    loadingEl.textContent = '...';
-    messagesEl.appendChild(loadingEl);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-
-    try {
-        // Call backend — replace host if opening index.html directly
-        const res = await fetch('http://127.0.0.1:5000/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: conversation })
-        });
-
-        const data = await res.json();
-        // remove placeholder
-        messagesEl.removeChild(loadingEl);
-
-        if (data.error) {
-            addMessage('bot', `Error: ${data.error}`);
-            console.error(data.error);
-            return;
-        }
-
-        const reply = data.reply || '';
-        addMessage('bot', reply);
-        conversation.push({ role: 'model', text: reply });
-
-    } catch (err) {
-        messagesEl.removeChild(loadingEl);
-        addMessage('bot', 'Network error — check console');
-        console.error(err);
-    }
+    // Send to backend
+    fetch("https://chatbot-5-gufh.onrender.com/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage })
+    })
+    .then((res) => res.json())
+    .then((data) => {
+        addMessage("bot", data.reply);
+    })
+    .catch((err) => {
+        addMessage("bot", "⚠️ Server error: " + err.message);
+    });
 });
