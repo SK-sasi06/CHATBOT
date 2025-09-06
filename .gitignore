@@ -1,0 +1,13 @@
+# Python environment
+venv/
+__pycache__/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+
+# Logs
+*.log
