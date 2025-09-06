@@ -1,13 +1,18 @@
+# server.py — Clean version for Render deployment
+
 from flask import Flask, request, jsonify
 import os
 import google.generativeai as genai
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # allow frontend (Netlify) to connect
+CORS(app)  # Allow frontend (Netlify) to connect
 
-# Configure Gemini
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+# Configure Gemini API
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    print("⚠️ GEMINI_API_KEY is not set!")
+genai.configure(api_key=api_key)
 
 @app.route("/", methods=["GET"])
 def home():
@@ -15,13 +20,24 @@ def home():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    data = request.json
-    user_message = data.get("message", "")
-    
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(user_message)
-    
-    return jsonify({"reply": response.text})
+    try:
+        data = request.json
+        user_message = data.get("message", "").strip()
+
+        if not user_message:
+            return jsonify({"reply": "⚠️ Please send a message."})
+
+        # Generate response using Gemini
+        model = genai.GenerativeModel("gemini-pro")
+        response = model.generate_content(user_message)
+
+        return jsonify({"reply": response.text})
+
+    except Exception as e:
+        print("Error in /chat:", e)
+        return jsonify({"reply": "⚠️ Server error. Please try again later."})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    # Use host=0.0.0.0 for Render
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
