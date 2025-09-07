@@ -1,39 +1,61 @@
-// script.js — Chatbot frontend logic
+// script.js — frontend logic
+const messagesEl = document.getElementById('messages');
+const form = document.getElementById('chat-form');
+const input = document.getElementById('input');
 
-const messagesEl = document.getElementById("messages");
-const form = document.getElementById("chat-form");
-const input = document.getElementById("input");
+// Conversation array sent to server; keep roles: 'user' or 'model'
+let conversation = [];
 
-// Add message to chat window
 function addMessage(role, text) {
-    const el = document.createElement("div");
-    el.className = role === "user" ? "message user" : "message bot";
-    el.innerText = text;
+    const el = document.createElement('div');
+    el.className = `message ${role === 'user' ? 'user' : 'bot'}`;
+    el.textContent = text;
     messagesEl.appendChild(el);
-    messagesEl.scrollTop = messagesEl.scrollHeight; // auto-scroll
+    messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-// Handle form submit
-form.addEventListener("submit", (e) => {
+form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const userMessage = input.value.trim();
-    if (!userMessage) return;
+    const text = input.value.trim();
+    if (!text) return;
 
-    // Show user message
-    addMessage("user", userMessage);
-    input.value = "";
+    // show user message
+    addMessage('user', text);
+    conversation.push({ role: 'user', text });
+    input.value = '';
 
-    // Send to backend
-    fetch("https://chatbot-5-gufh.onrender.com/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage })
-    })
-    .then((res) => res.json())
-    .then((data) => {
-        addMessage("bot", data.reply);
-    })
-    .catch((err) => {
-        addMessage("bot", "⚠️ Server error: " + err.message);
-    });
+    // add a temporary 'typing' placeholder
+    const loadingEl = document.createElement('div');
+    loadingEl.className = 'message bot';
+    loadingEl.textContent = '...';
+    messagesEl.appendChild(loadingEl);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    try {
+        // Call backend — replace host if opening index.html directly
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: conversation })
+        });
+
+        const data = await res.json();
+        // remove placeholder
+        messagesEl.removeChild(loadingEl);
+
+        if (data.error) {
+            addMessage('bot', `Error: ${data.error}`);
+            console.error(data.error);
+            return;
+        }
+
+        const reply = data.reply || '';
+        addMessage('bot', reply);
+        conversation.push({ role: 'model', text: reply });
+
+    } catch (err) {
+        messagesEl.removeChild(loadingEl);
+        addMessage('bot', 'Network error — check console');
+        console.error(err);
+    }
 });
